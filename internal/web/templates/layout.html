@@ -1,0 +1,35 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .Title}}{{.Title}} · {{end}}Foyer</title>
+<link rel="stylesheet" href="/static/app.css?v=13">
+</head>
+<body data-auto-open="{{.OpenModal}}">
+{{if .Error}}<div class="flash" data-kind="error" data-message="{{.Error}}" hidden></div>{{end}}
+{{if .Notice}}<div class="flash" data-kind="success" data-message="{{.Notice}}" hidden></div>{{end}}
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+<header class="topbar">
+  <a class="brand" href="/"><span class="brand-mark">F</span>Foyer</a>
+  <nav class="nav">
+    {{if .User}}
+      <a href="/">应用</a>
+      <a href="/account">账号</a>
+      {{if .IsAdmin}}<a href="/admin/apps">管理</a>{{end}}
+      <form method="post" action="/logout" class="inline-form">
+        <button type="submit" class="link">退出</button>
+      </form>
+    {{end}}
+  </nav>
+</header>
+
+<main class="main">
+{{template "content" .}}
+</main>
+
+<footer class="footer">内网入口 · {{.BaseDomain}}</footer>
+<script src="/static/app.js?v=3" defer></script>
+</body>
+</html>{{end}}

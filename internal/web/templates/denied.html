@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>没有访问权限</h1>
+    <p class="muted">当前账号（{{.User.Username}}）未被授权访问这个应用。</p>
+    <p class="muted small">如果你认为这是错误的，请联系管理员在 Foyer 后台为你开通。</p>
+    <div class="actions">
+      <a class="btn" href="/">返回应用列表</a>
+      <form method="post" action="/logout" class="inline-form">
+        <button class="link" type="submit">切换账号</button>
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

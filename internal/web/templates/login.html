@@ -1,0 +1,44 @@
+{{define "content"}}
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>登录</h1>
+    <p class="muted">内网入口 · {{.BaseDomain}}</p>
+
+    <form method="post" action="/login" class="form">
+      <input type="hidden" name="rd" value="{{.Redirect}}">
+      <label>用户名
+        <input name="username" value="{{.Username}}" autocomplete="username" required autofocus>
+      </label>
+      <label>密码
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn primary" type="submit">登录</button>
+    </form>
+  </div>
+</div>
+
+{{if .OTPChallenge}}
+<dialog class="modal" id="login-otp">
+  <form method="post" action="/login/otp">
+    <input type="hidden" name="token" value="{{.PendingToken}}">
+    <input type="hidden" name="rd" value="{{.Redirect}}">
+    <div class="modal-head">
+      <h2>两步验证</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted">「{{.Username}}」已开启 2FA，请输入验证器里的 6 位验证码。</p>
+      <div class="grid-form">
+        <label class="wide">动态验证码
+          <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required autofocus>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn primary" type="submit">验证</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
+{{end}}

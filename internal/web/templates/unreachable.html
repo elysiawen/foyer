@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="auth-wrap">
+  <div class="card error-card">
+    <div class="error-badge" aria-hidden="true">!</div>
+    <h1>应用暂时不可达</h1>
+    <p class="muted">「{{.AppName}}」没有响应，可能正在重启或已离线。</p>
+    <div class="error-upstream mono">{{.Upstream}}</div>
+    <div class="actions error-actions">
+      <a class="btn primary" href="{{.Retry}}">重新加载</a>
+      <a class="btn" href="/">返回应用列表</a>
+    </div>
+    <p class="hint">如果一直无法访问，请联系管理员检查上游服务状态。</p>
+  </div>
+</div>
+{{end}}

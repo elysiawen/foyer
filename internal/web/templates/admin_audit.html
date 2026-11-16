@@ -1,0 +1,76 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>访问审计</h1>
+    <p class="muted">共 {{.AuditTotal}} 条记录 · 同一用户同一应用 10 分钟内只记一次</p>
+  </div>
+  <nav class="tabs">
+    <a href="/admin/apps">应用</a>
+    <a href="/admin/users">用户</a>
+    <a class="active" href="/admin/audit">审计</a>
+  </nav>
+</div>
+
+<section class="card">
+  {{if .Audit}}
+  <div class="table-wrap">
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>用户</th>
+          <th>应用</th>
+          <th>路径</th>
+          <th>IP</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Audit}}
+        <tr>
+          <td class="mono small" data-label="时间">{{timefmt .CreatedAt}}</td>
+          <td data-label="用户">{{.Username}}</td>
+          <td class="mono" data-label="应用">{{if .AppSubdomain}}{{.AppSubdomain}}{{else}}-{{end}}</td>
+          <td class="mono small path" data-label="路径" title="{{.Path}}">{{.Path}}</td>
+          <td class="mono small" data-label="IP">{{.IP}}</td>
+          <td data-label="状态">
+            {{if eq .Status 200}}<span class="pill ok">200</span>
+            {{else if eq .Status 403}}<span class="pill warn">403</span>
+            {{else}}<span class="pill off">{{.Status}}</span>{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">还没有访问记录。</p>
+  {{end}}
+
+  {{if .AuditTotal}}
+  <nav class="pager">
+    {{if .PrevPage}}
+    <a class="btn small" href="/admin/audit?page={{.PrevPage}}&size={{.AuditSize}}">上一页</a>
+    {{else}}
+    <span class="btn small" aria-disabled="true">上一页</span>
+    {{end}}
+    <span class="pager-info">第 {{.AuditPage}} / {{.AuditPages}} 页</span>
+    {{if .NextPage}}
+    <a class="btn small" href="/admin/audit?page={{.NextPage}}&size={{.AuditSize}}">下一页</a>
+    {{else}}
+    <span class="btn small" aria-disabled="true">下一页</span>
+    {{end}}
+    <form class="pager-size" method="get" action="/admin/audit">
+      <label>每页
+        <select name="size" onchange="this.form.submit()">
+          <option value="10"{{if eq .AuditSize 10}} selected{{end}}>10 条</option>
+          <option value="30"{{if eq .AuditSize 30}} selected{{end}}>30 条</option>
+          <option value="50"{{if eq .AuditSize 50}} selected{{end}}>50 条</option>
+        </select>
+      </label>
+      <noscript><button class="btn small" type="submit">应用</button></noscript>
+    </form>
+  </nav>
+  {{end}}
+</section>
+{{end}}

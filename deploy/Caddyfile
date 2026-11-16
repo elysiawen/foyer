@@ -1,0 +1,22 @@
+# Foyer 公网入口 Caddyfile（路径式，单域名）
+#
+# 前置条件：
+#   1. DNS：foyer.elysia.cc 的 A/AAAA 记录指向本机公网 IP（IP 不固定就配 ddns-go 更新）
+#   2. 本机 80 / 443 端口可被公网访问，Caddy 会自动申请并续期 Let's Encrypt 证书
+#   3. 把这个文件放到 /etc/caddy/Caddyfile 后 sudo systemctl reload caddy
+#
+# 所有应用共用同一个域名，靠路径前缀区分，由 foyer 自己反代到内网：
+#   https://foyer.elysia.cc/             -> 门户
+#   https://foyer.elysia.cc/jellyfin/    -> http://127.0.0.1:8096/
+#   https://foyer.elysia.cc/vaultwarden/ -> http://192.168.1.20:8222/
+#
+# 好处：新增应用只在门户后台添加即可，不用改 Caddyfile、不用 reload。
+
+{
+	email admin@elysia.cc
+}
+
+foyer.elysia.cc {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:9100
+}

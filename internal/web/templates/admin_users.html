@@ -1,0 +1,160 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>用户管理</h1>
+    <p class="muted">共 {{len .Users}} 个账号</p>
+  </div>
+  <div class="head-tools">
+    <nav class="tabs">
+      <a href="/admin/apps">应用</a>
+      <a class="active" href="/admin/users">用户</a>
+      <a href="/admin/audit">审计</a>
+    </nav>
+    <button class="btn primary" type="button" data-modal="user-new">新增用户</button>
+  </div>
+</div>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>角色</th>
+          <th>2FA</th>
+          <th>创建时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Users}}
+        <tr>
+          <td class="row-title" data-label="用户名">{{.Username}}</td>
+          <td data-label="角色">{{if eq .Role "admin"}}<span class="pill ok">管理员</span>{{else}}<span class="pill">普通</span>{{end}}</td>
+          <td data-label="2FA">{{if .TOTPSecret}}<span class="pill ok">已启用</span>{{else}}<span class="pill off">未启用</span>{{end}}</td>
+          <td class="mono small" data-label="创建时间">{{timefmt .CreatedAt}}</td>
+          <td class="row-actions">
+            <button class="btn small" type="button" data-modal="user-edit-{{.ID}}">编辑</button>
+            <button class="btn small" type="button"
+              data-delete-url="/admin/users/{{.ID}}/totp"
+              data-delete-title="清除 2FA"
+              data-delete-desc="清除「{{.Username}}」的动态验证码绑定，该用户下次登录后需要重新绑定。"
+              data-delete-ok="清除">清除 2FA</button>
+            {{if ne .ID $.User.ID}}
+            <button class="btn small danger" type="button"
+              data-delete-url="/admin/users/{{.ID}}/delete"
+              data-delete-title="删除用户"
+              data-delete-desc="确定删除「{{.Username}}」？该用户的所有登录会话会同时失效。"
+              data-delete-ok="删除">删除</button>
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{/* 新增用户 */}}
+<dialog class="modal small" id="user-new">
+  <form method="post" action="/admin/users">
+    <div class="modal-head">
+      <h2>新增用户</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form">
+        <label>用户名
+          <input name="username" autocomplete="off" required>
+        </label>
+        <label>初始密码
+          <span class="hint">至少 8 个字符</span>
+          <input name="password" type="password" autocomplete="new-password" required>
+        </label>
+        <label>角色
+          <select name="role">
+            <option value="user">普通用户</option>
+            <option value="admin">管理员</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn primary" type="submit">创建</button>
+    </div>
+  </form>
+</dialog>
+
+{{/* 编辑用户（每个用户一个弹窗） */}}
+{{range .Users}}
+{{$uid := .ID}}
+<dialog class="modal" id="user-edit-{{.ID}}">
+  <form method="post" action="/admin/users/{{.ID}}">
+    <div class="modal-head">
+      <h2>编辑「{{.Username}}」</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form">
+        <label>用户名
+          <input name="username" value="{{.Username}}" required>
+        </label>
+        <label>角色
+          <select name="role" onchange="var apps=document.getElementById('user-apps-{{.ID}}'); var adm=document.getElementById('user-admin-hint-{{.ID}}'); if(this.value==='admin'){apps.hidden=true;adm.hidden=false;}else{apps.hidden=false;adm.hidden=true;}">
+            <option value="user" {{if eq .Role "user"}}selected{{end}}>普通用户</option>
+            <option value="admin" {{if eq .Role "admin"}}selected{{end}}>管理员</option>
+          </select>
+        </label>
+        <label>新密码
+          <span class="hint">留空表示不修改；重置后该用户需要重新登录</span>
+          <input name="password" type="password" autocomplete="new-password">
+        </label>
+      </div>
+
+      <div id="user-admin-hint-{{.ID}}" class="muted" {{if ne .Role "admin"}}hidden{{end}}>
+        <p>管理员自动拥有后台权限和所有应用的访问权限，无需单独勾选。</p>
+      </div>
+
+      <div id="user-apps-{{.ID}}" {{if eq .Role "admin"}}hidden{{end}}>
+        <p class="muted">勾选此用户可访问的应用：</p>
+        {{if $.AllApps}}
+        <div class="app-check-list">
+          {{range $app := $.AllApps}}
+          <label class="app-check">
+            <input type="checkbox" name="apps" value="{{$app.ID}}"
+              {{if index (index $.UserAppAccess $uid) $app.ID}}checked{{end}}>
+            <span>{{$app.Name}} <small class="muted">/{{$app.Subdomain}}/</small></span>
+          </label>
+          {{end}}
+        </div>
+        {{else}}
+        <p class="muted">暂无可分配的应用。</p>
+        {{end}}
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn primary" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
+
+{{/* 通用确认弹窗 */}}
+<dialog class="modal small" id="confirm">
+  <form method="post" id="confirm-form">
+    <div class="modal-head">
+      <h2 id="confirm-title">确认操作</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text" id="confirm-desc"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn danger" type="submit" id="confirm-ok">确定</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

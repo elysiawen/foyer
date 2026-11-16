@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o tmp/foyer.exe ./cmd/foyer"
+entrypoint = "tmp/foyer.exe"
+include_ext = ["go", "html", "css", "js"]
+exclude_dir = ["dist", "tmp", ".git"]
+exclude_file = []
+exclude_regex = ["_test\\.go$"]
+exclude_unchanged = true
+follow_symlink = true
+poll = false
+
+[log]
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green"

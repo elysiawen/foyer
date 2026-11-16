@@ -1,0 +1,75 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>账号</h1>
+    <p class="muted">{{.User.Username}} · {{if .IsAdmin}}管理员{{else}}普通用户{{end}}</p>
+  </div>
+</div>
+
+<div class="stack">
+  <section class="card">
+    <h2>修改用户名</h2>
+    <form method="post" action="/account/username" class="form">
+      <label>新用户名
+        <span class="hint">登录时使用的名字，64 个字符以内</span>
+        <input name="username" value="{{.User.Username}}" required maxlength="64">
+      </label>
+      <button class="btn primary" type="submit">保存</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>修改密码</h2>
+    <form method="post" action="/account/password" class="form">
+      <label>当前密码
+        <input name="current" type="password" autocomplete="current-password" required>
+      </label>
+      <label>新密码
+        <span class="hint">至少 8 个字符</span>
+        <input name="password" type="password" autocomplete="new-password" required>
+      </label>
+      <button class="btn primary" type="submit">保存新密码</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>动态验证码（2FA）</h2>
+    {{if .HasTOTP}}
+      <p class="muted">已启用。登录时需要输入验证器中的 6 位数字。</p>
+      <form method="post" action="/account/totp/disable" class="form">
+        <label>当前密码
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <label>当前动态验证码
+          <input name="code" inputmode="numeric" maxlength="6" required>
+        </label>
+        <button class="btn danger" type="submit">关闭 2FA</button>
+      </form>
+    {{else if .SecretBox}}
+      <p class="muted">用验证器 App 扫码或手动添加下面的密钥，然后输入它生成的 6 位数字完成绑定。</p>
+      <div class="secret-box">
+        <div>
+          <span class="label">密钥</span>
+          <code class="mono">{{.SecretBox}}</code>
+        </div>
+        <div>
+          <span class="label">otpauth 链接</span>
+          <code class="mono break">{{.TOTPURL}}</code>
+        </div>
+      </div>
+      <form method="post" action="/account/totp/enable" class="form">
+        <input type="hidden" name="secret" value="{{.SecretBox}}">
+        <label>验证器中的 6 位数字
+          <input name="code" inputmode="numeric" maxlength="6" required autofocus>
+        </label>
+        <button class="btn primary" type="submit">确认启用</button>
+      </form>
+    {{else}}
+      <p class="muted">尚未启用。强烈建议在公网入口上开启。</p>
+      <form method="post" action="/account/totp/start">
+        <button class="btn" type="submit">生成密钥</button>
+      </form>
+    {{end}}
+  </section>
+</div>
+{{end}}

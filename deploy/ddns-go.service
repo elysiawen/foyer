@@ -1,0 +1,17 @@
+# ddns-go：把入口机的 IPv6 地址写进 DNSPod 的 AAAA 记录
+# 官方仓库 https://github.com/jeessy2/ddns-go
+# 安装后先用 systemctl start ddns-go 打开 Web 界面（默认 :9876）完成配置
+
+[Unit]
+Description=ddns-go dynamic DNS updater
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ddns-go -l :9876 -f 300
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,196 @@
+{{define "content"}}
+<div class="page-head">
+  <div>
+    <h1>应用管理</h1>
+    <p class="muted">共 {{len .Rows}} 个应用</p>
+  </div>
+  <div class="head-tools">
+    <nav class="tabs">
+      <a class="active" href="/admin/apps">应用</a>
+      <a href="/admin/users">用户</a>
+      <a href="/admin/audit">审计</a>
+    </nav>
+    <button class="btn primary" type="button" data-modal="app-new">新增应用</button>
+  </div>
+</div>
+
+<section class="card">
+  {{if .Rows}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>访问地址</th>
+          <th>上游</th>
+          <th>状态</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td data-label="名称">
+            <div class="cell-main">
+              <span class="row-title">{{if .App.Icon}}{{.App.Icon}} {{end}}{{.App.Name}}</span>
+              {{if .App.Description}}<div class="muted small">{{.App.Description}}</div>{{end}}
+            </div>
+          </td>
+          <td class="mono" data-label="访问地址">/{{.App.Subdomain}}/</td>
+          <td class="mono" data-label="上游">{{.App.Upstream}}</td>
+          <td data-label="状态">
+            {{if .App.Enabled}}<span class="pill ok">启用</span>{{else}}<span class="pill off">停用</span>{{end}}
+          </td>
+          <td class="row-actions">
+            <button class="btn small" type="button" data-modal="app-edit-{{.App.ID}}">编辑</button>
+            <button class="btn small danger" type="button"
+              data-delete-url="/admin/apps/{{.App.ID}}/delete"
+              data-delete-title="删除应用"
+              data-delete-desc="确定删除「{{.App.Name}}」？只删除门户里的记录，不会动内网应用本身。"
+              data-delete-ok="删除">删除</button>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty">
+    <p class="muted">还没有应用，先添加一个吧。</p>
+    <p><button class="btn primary" type="button" data-modal="app-new">新增应用</button></p>
+  </div>
+  {{end}}
+</section>
+
+<dialog class="modal" id="app-new">
+  <form method="post" action="/admin/apps">
+    <div class="modal-head">
+      <h2>新增应用</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-form">
+        <label>应用名称
+          <input name="name" placeholder="Jellyfin" required>
+        </label>
+        <label>访问路径
+          <span class="hint">一段路径，例如 jellyfin → /jellyfin/</span>
+          <input name="subdomain" placeholder="jellyfin" required>
+        </label>
+        <label>上游地址
+          <span class="hint">本机写 127.0.0.1:8096，其他机器写内网 IP</span>
+          <input name="upstream" placeholder="192.168.1.10:8096" required>
+        </label>
+        <label>图标
+          <span class="hint">填一个 emoji 即可</span>
+          <input name="icon" placeholder="🎬" maxlength="8">
+        </label>
+        <label class="wide">描述
+          <input name="description" placeholder="影视库">
+        </label>
+        <label>健康检查路径
+          <input name="health_path" placeholder="/">
+        </label>
+        <label>排序
+          <span class="hint">数字越小越靠前</span>
+          <input name="sort" type="number" value="100">
+        </label>
+        <label class="check">
+          <input type="checkbox" name="enabled" checked> 启用
+        </label>
+        <label class="check wide">
+          <input type="checkbox" name="safe_rewrite"> 安全改写（仅改 /api、/assets 等资源路径）
+          <span class="hint">前端路由应用（Vue/React SPA 自带路由）建议勾选，避免路由表被改写</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn primary" type="submit">创建</button>
+    </div>
+  </form>
+</dialog>
+
+{{range .Rows}}
+<dialog class="modal" id="app-edit-{{.App.ID}}">
+  <form method="post" action="/admin/apps/{{.App.ID}}">
+    <div class="modal-head">
+      <h2>编辑「{{.App.Name}}」</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-form">
+        <label>应用名称
+          <input name="name" value="{{.App.Name}}" required>
+        </label>
+        <label>访问路径
+          <span class="hint">例如 jellyfin</span>
+          <input name="subdomain" value="{{.App.Subdomain}}" required>
+        </label>
+        <label>上游地址
+          <input name="upstream" value="{{.App.Upstream}}" required>
+        </label>
+        <label>图标
+          <input name="icon" value="{{.App.Icon}}" maxlength="8">
+        </label>
+        <label class="wide">描述
+          <input name="description" value="{{.App.Description}}">
+        </label>
+        <label>健康检查路径
+          <input name="health_path" value="{{.App.HealthPath}}">
+        </label>
+        <label>排序
+          <input name="sort" type="number" value="{{.App.Sort}}">
+        </label>
+        <label class="check">
+          <input type="checkbox" name="enabled" {{if .App.Enabled}}checked{{end}}> 启用
+        </label>
+        <label class="check wide">
+          <input type="checkbox" name="safe_rewrite" {{if .App.SafeRewrite}}checked{{end}}> 安全改写（仅改 /api、/assets 等资源路径）
+          <span class="hint">前端路由应用（Vue/React SPA 自带路由）建议勾选，避免路由表被改写</span>
+        </label>
+
+        {{$row := .}}
+        <fieldset class="wide">
+          <legend>可见用户</legend>
+          <p class="hint">管理员默认可访问所有应用；这里只需要勾选普通用户。</p>
+          {{if $.Users}}
+            <div class="checks">
+            {{range $.Users}}
+              <label class="check">
+                <input type="checkbox" name="users" value="{{.ID}}" {{if index $row.Access .ID}}checked{{end}}>
+                {{.Username}}
+              </label>
+            {{end}}
+            </div>
+          {{else}}
+            <p class="muted small">还没有普通用户，请先到「用户」页创建。</p>
+          {{end}}
+        </fieldset>
+      </div>
+      <p class="hint mono modal-note">访问地址：/{{.App.Subdomain}}/ → http://{{.App.Upstream}}/</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn primary" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+{{end}}
+
+<dialog class="modal small" id="confirm">
+  <form method="post" id="confirm-form">
+    <div class="modal-head">
+      <h2 id="confirm-title">确认操作</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-text" id="confirm-desc"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" data-close>取消</button>
+      <button class="btn danger" type="submit" id="confirm-ok">确定</button>
+    </div>
+  </form>
+</dialog>
+{{end}}

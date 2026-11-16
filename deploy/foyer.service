@@ -1,0 +1,23 @@
+[Unit]
+Description=Foyer intranet portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=foyer
+Group=foyer
+WorkingDirectory=/opt/foyer
+EnvironmentFile=/etc/foyer/foyer.env
+ExecStart=/opt/foyer/foyer
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/foyer
+
+[Install]
+WantedBy=multi-user.target
