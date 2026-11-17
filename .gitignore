@@ -16,6 +16,7 @@ tmp/
 # 编辑器与系统文件
 .vscode/
 .idea/
+.trae/
 .DS_Store
 Thumbs.db
 

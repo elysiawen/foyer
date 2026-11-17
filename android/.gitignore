@@ -1,0 +1,11 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+*.apk
+.idea/
+.cxx/
+
+# 正式签名密钥库不进仓库
+keystore/

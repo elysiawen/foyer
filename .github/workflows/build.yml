@@ -1,0 +1,170 @@
+name: Build
+
+on:
+  # 每次推送 master / main 都重新编译，并按「当天日期」发布 Release；
+  # 同一天重复构建会删掉当天旧 Release，用本次产物整体替换
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 连续推送时只保留最新一次，避免两个运行同时改同一个 Release
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: build server (linux-amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 版本号 = 北京时间当天日期（20261117），让产物文件名和 Release tag 对齐
+      - name: Resolve version
+        id: version
+        run: echo "version=$(TZ=Asia/Shanghai date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags="-s -w" -o "Foyer-${{ steps.version.outputs.version }}-linux-amd64" ./cmd/foyer
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-linux-amd64
+          if-no-files-found: error
+          path: Foyer-*-linux-amd64
+
+  android:
+    name: build android apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # AGP 8.7 需要 JDK 17+，这里用 21
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Resolve version
+        id: version
+        run: echo "version=$(TZ=Asia/Shanghai date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+      # 正式签名密钥库由仓库 Secret 提供，绝不进仓库。
+      # 缺失时直接报错，避免悄悄产出 debug 签名包、导致后续覆盖安装签名冲突。
+      - name: Prepare signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::缺少仓库 Secret ANDROID_KEYSTORE_BASE64，无法给 release 包签名"
+            exit 1
+          fi
+          mkdir -p android/keystore
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore/foyer-release.jks
+
+      # Windows 上提交的 gradlew 可能没有执行位，先 chmod
+      - name: Build APK
+        working-directory: android
+        env:
+          FOYER_KEYSTORE_FILE: ${{ github.workspace }}/android/keystore/foyer-release.jks
+          FOYER_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          FOYER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          FOYER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk "Foyer-${{ steps.version.outputs.version }}-android.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          if-no-files-found: error
+          path: Foyer-*-android.apk
+
+  release:
+    name: publish release
+    needs: [server, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # 版本号 = 北京时间当天日期（20261117），同时生成构建时间与提交号
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          echo "version=$(TZ=Asia/Shanghai date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
+          echo "built_at=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S') (UTC+8)" >> "$GITHUB_OUTPUT"
+          echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        run: |
+          cat > notes.md <<EOF
+          ## Foyer 自动构建
+
+          - **版本号**: ${{ steps.version.outputs.version }}
+          - **构建时间**: ${{ steps.version.outputs.built_at }}
+          - **Commit**: ${{ steps.version.outputs.commit }}
+          - **产物**: Linux 服务端（amd64） / Android 客户端（release 签名）
+          EOF
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO="${GITHUB_REPOSITORY}"
+          REF="repos/${REPO}/git/ref/tags/${VERSION}"
+
+          # 同一天再构建：把当天旧 Release 连同日期 tag 整个删掉，用本次产物重建。
+          # 只在旧 Release 上 upload --clobber 只覆盖同名文件：旧包会残留，
+          # 构建时间 / commit 说明也不会跟着更新。
+          if gh release view "$VERSION" --repo "$REPO" >/dev/null 2>&1; then
+            gh release delete "$VERSION" --repo "$REPO" --yes --cleanup-tag
+          elif gh api "$REF" >/dev/null 2>&1; then
+            # Release 已不在、但同名 tag 还在：也删掉，免得新 Release 挂到旧提交。
+            gh api -X DELETE "repos/${REPO}/git/refs/tags/${VERSION}"
+          fi
+
+          # tag 删除偶有 API 延迟，等它真的消失再 create，否则会复用旧 tag、
+          # 把这次的产物挂到上一次的提交上。
+          for _ in $(seq 1 10); do
+            gh api "$REF" >/dev/null 2>&1 || break
+            sleep 2
+          done
+          if gh api "$REF" >/dev/null 2>&1; then
+            echo "::error::日期 tag ${VERSION} 仍在，终止发布以免关联到旧提交"
+            exit 1
+          fi
+
+          gh release create "$VERSION" artifacts/* \
+            --repo "$REPO" \
+            --target "${GITHUB_SHA}" \
+            --title "Release ${VERSION}" \
+            --notes-file notes.md
