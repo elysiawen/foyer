@@ -310,6 +310,14 @@ func prefixAbsolutePaths(body []byte, prefix string, safe bool) []byte {
 			continue
 		}
 
+		// 文件系统路径（如 /mnt/hdd/viggle、/home/user/...）不是 URL，
+		// 不该在前面补门户前缀，否则用户在设置里填的存储目录会被破坏。
+		// 这条规则对安全/全量两种模式都生效。
+		if isFilesystemPath(rest) {
+			i = end
+			continue
+		}
+
 		out = append(out, body[last:end]...)
 		out = append(out, prefix...)
 		last = end
@@ -461,6 +469,25 @@ var resourcePrefixes = []string{
 
 func isResourcePath(rest []byte) bool {
 	for _, p := range resourcePrefixes {
+		if bytes.HasPrefix(rest, []byte(p)) {
+			return true
+		}
+	}
+	return false
+}
+
+// fsPathPrefixes 是常见的 Unix 文件系统根目录前缀。
+// 这些路径出现在字符串里时几乎一定是本地目录，而不是网页 URL，
+// 所以即便是全量改写模式也不要给它们补门户前缀，
+// 否则用户在设置里填的存储目录会被破坏（例如 /mnt/hdd/viggle）。
+var fsPathPrefixes = []string{
+	"/mnt/", "/home/", "/root/", "/etc/", "/var/", "/tmp/",
+	"/usr/", "/opt/", "/boot/", "/dev/", "/proc/", "/sys/",
+	"/srv/", "/media/", "/lib/", "/lib64/", "/bin/", "/sbin/",
+}
+
+func isFilesystemPath(rest []byte) bool {
+	for _, p := range fsPathPrefixes {
 		if bytes.HasPrefix(rest, []byte(p)) {
 			return true
 		}

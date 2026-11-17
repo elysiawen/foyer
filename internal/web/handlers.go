@@ -192,7 +192,7 @@ func (s *Server) finishLogin(w http.ResponseWriter, r *http.Request, u *store.Us
 		return
 	}
 	_ = s.st.PurgeExpiredSessions()
-	auth.SetSessionCookie(w, s.cfg.CookieDomain, s.cfg.SecureCookie, token, s.cfg.SessionTTL)
+	auth.SetSessionCookie(w, s.sessionCookieDomain(r), s.cfg.SecureCookie, token, s.cfg.SessionTTL)
 	_ = s.st.AddAudit(u.ID, u.Username, "", hostOnly(r.Host), r.URL.RequestURI(), clientIP(r), r.UserAgent(), 200)
 
 	http.Redirect(w, r, rd, http.StatusSeeOther)
@@ -247,7 +247,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if token := auth.Token(r); token != "" {
 		_ = s.st.DeleteSession(auth.HashToken(token))
 	}
-	auth.ClearSessionCookie(w, s.cfg.CookieDomain, s.cfg.SecureCookie)
+	auth.ClearSessionCookie(w, s.sessionCookieDomain(r), s.cfg.SecureCookie)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 

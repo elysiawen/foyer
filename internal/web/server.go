@@ -290,6 +290,21 @@ func hostOnly(h string) string {
 	return strings.Trim(h, "[]")
 }
 
+// sessionCookieDomain 只在请求主机属于配置的 cookie 域时才带 Domain。
+// 用局域网 IP 等不匹配的地址访问时下发 host-only cookie，
+// 否则客户端会直接丢弃这个 cookie，表现成登录成功后又被踢回登录页。
+func (s *Server) sessionCookieDomain(r *http.Request) string {
+	d := strings.TrimPrefix(strings.ToLower(s.cfg.CookieDomain), ".")
+	if d == "" {
+		return ""
+	}
+	host := strings.ToLower(hostOnly(r.Host))
+	if host == d || strings.HasSuffix(host, "."+d) {
+		return s.cfg.CookieDomain
+	}
+	return ""
+}
+
 func clientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
