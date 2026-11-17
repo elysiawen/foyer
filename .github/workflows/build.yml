@@ -57,10 +57,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
+      # 运行器自带 Android SDK；setup-android 在 cmdline-tools 16 上会因找不到 tools 包失败，
+      # 这里直接用 runner 自带的 sdkmanager 补齐 platform 与 build-tools
       - name: Install SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null
+        run: |
+          SDKMANAGER="$(command -v sdkmanager || find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" -name sdkmanager -type f | head -n1)"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Resolve version
         id: version
