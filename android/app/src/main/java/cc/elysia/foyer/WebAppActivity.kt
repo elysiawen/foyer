@@ -27,7 +27,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.abs
 
@@ -181,7 +180,7 @@ class WebAppActivity : Activity() {
 
     /** 右上角的关闭按钮可以拖到屏幕任意位置，轻点则退出应用。 */
     private fun setupDraggableExit() {
-        val exit = findViewById<TextView>(R.id.web_exit)
+        val exit = findViewById<View>(R.id.web_exit)
         val root = findViewById<View>(R.id.web_root)
         val slop = ViewConfiguration.get(this).scaledTouchSlop
         var downX = 0f
